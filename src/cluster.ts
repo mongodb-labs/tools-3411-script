@@ -1,4 +1,4 @@
-import { logCollectionResults } from "./output";
+import { logResults } from "./output";
 
 const EXCLUDED_DBS = ["local"];
 
@@ -24,4 +24,4 @@ function getCollectionInfosForDatabase(databaseInfo: any) {
 }
 
 const collectionInfos = getCollectionInfos();
-logCollectionResults(collectionInfos);
+logResults(collectionInfos);

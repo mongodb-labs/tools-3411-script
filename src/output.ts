@@ -1,41 +1,96 @@
-import { isSafeCollection } from "./collections";
+import { Result, isSafeCollection } from "./collections";
 
-export function logCollectionResults(collections: any[]): void {
-  let numUnsafeCollections = 0;
-  collections.forEach((collection) => {
-    const isSafe = isSafeCollection(collection);
-    if (!isSafe) {
-      console.log(`${collection.db}.${collection.name}`);
-      numUnsafeCollections++;
+export function logResults(collections: any[]): void {
+  const { unsafeViews, unsafeValidators } = getUnsafeCollections(collections);
+  logUnsafeViews(unsafeViews);
+  logUnsafeValidators(unsafeValidators);
+  logSummary(unsafeViews.length, unsafeValidators.length, collections.length);
+}
+
+function getUnsafeCollections(collections: any[]): {
+  unsafeViews: any[];
+  unsafeValidators: any[];
+} {
+  const initialUnsafeCollections = {
+    unsafeViews: [],
+    unsafeValidators: [],
+  };
+  return collections.reduce((unsafeCollections: any, collection: any) => {
+    const result = isSafeCollection(collection);
+    if (result === Result.VIEW_UNSAFE) {
+      unsafeCollections.unsafeViews.push(collection);
     }
+    if (result === Result.VALIDATOR_UNSAFE) {
+      unsafeCollections.unsafeValidators.push(collection);
+    }
+    return unsafeCollections;
+  }, initialUnsafeCollections);
+}
+
+function logUnsafeViews(unsafeViews: any[]): void {
+  if (unsafeViews.length === 0) {
+    return;
+  }
+  console.log("----- Views to audit -----");
+  unsafeViews.forEach((view) => {
+    console.log(`${view.db}.${view.name}`);
+    console.log(JSON.stringify(view.options.pipeline, null, 2));
   });
+}
+
+function logUnsafeValidators(unsafeValidators: any[]): void {
+  if (unsafeValidators.length === 0) {
+    return;
+  }
+  console.log("----- Validators to audit -----");
+  unsafeValidators.forEach((collection) => {
+    console.log(`${collection.db}.${collection.name}`);
+    console.log(JSON.stringify(collection.options.validator, null, 2));
+  });
+}
+
+function logSummary(
+  numUnsafeViews: number,
+  numUnsafeValidators: number,
+  numTotalCollections: number
+): void {
   console.log("----- Summary -----");
+  const numUnsafeCollections = numUnsafeViews + numUnsafeValidators;
   if (numUnsafeCollections > 0) {
-    logUnsafeMessage(numUnsafeCollections, collections.length);
+    logUnsafeSummary(
+      numUnsafeCollections,
+      numUnsafeViews,
+      numUnsafeValidators,
+      numTotalCollections
+    );
   } else {
-    logSafeMessage(collections.length);
+    logSafeSummary(numTotalCollections);
   }
 }
 
-function logUnsafeMessage(
-  numMaybeUnsafeCollections: number,
+function logUnsafeSummary(
+  numUnsafeCollections: number,
+  numUnsafeViews: number,
+  numUnsafeValidators: number,
   numTotalCollections: number
 ): void {
   console.log(
     "Your cluster or dump may be affected by TOOLS-3411. " +
-      `Potential misorderings could be present in ${numMaybeUnsafeCollections} ${pluralize(
-        "collection",
-        numMaybeUnsafeCollections
-      )} of the ${numTotalCollections} ${pluralize(
-        "collection",
-        numTotalCollections
-      )} inspected. ` +
+      `${numUnsafeCollections} ` +
+      `${pluralize("collection", numUnsafeCollections)} ` +
+      `(${numUnsafeViews} ${pluralize("view", numUnsafeViews)} and ` +
+      `${numUnsafeValidators} ` +
+      `${pluralize("validator", numUnsafeValidators)}) ` +
+      `of the ${numTotalCollections} ` +
+      `${pluralize("collection", numTotalCollections)} ` +
+      "inspected could not be automatically analyzed for field order sensitivity. " +
       "Collections that may be affected are listed above. " +
-      "Please manually audit these collections."
+      "Please manually audit these collections in accordance with the guidelines here: " +
+      "https://jira.mongodb.org/browse/TOOLS-3411"
   );
 }
 
-function logSafeMessage(numTotalCollections: number): void {
+function logSafeSummary(numTotalCollections: number): void {
   console.log(
     "Your cluster or dump is not affected by TOOLS-3411. " +
       `No potential misorderings were found in the ${numTotalCollections} inspected ${pluralize(
@@ -45,6 +100,6 @@ function logSafeMessage(numTotalCollections: number): void {
   );
 }
 
-function pluralize(str: string, n: number) {
+function pluralize(str: string, n: number): string {
   return n === 1 ? str : `${str}s`;
 }

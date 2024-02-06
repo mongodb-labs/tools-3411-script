@@ -1,7 +1,7 @@
 import { parseDirectory } from "./directory";
 import { parseArchive } from "./archive";
 import { getOptions, Options } from "./options";
-import { logCollectionResults } from "../output";
+import { logResults } from "../output";
 
 async function main() {
   const options = getOptions();
@@ -14,7 +14,7 @@ async function main() {
     (collection) =>
       collection?.type === "view" || collection?.options?.validator != null
   );
-  logCollectionResults(filteredCollections);
+  logResults(filteredCollections);
 }
 
 async function getMetadata({ mode, path }: Options): Promise<any[]> {

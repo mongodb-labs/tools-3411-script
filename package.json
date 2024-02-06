@@ -5,12 +5,13 @@
   },
   "scripts": {
     "test": "jest",
-    "build-active-cluster": "esbuild src/find_affected_collections.ts --bundle --outfile=dist/detect_for_active_cluster.js --platform=node --target=es2022",
+    "build-active-cluster": "esbuild src/cluster.ts --bundle --outfile=dist/detect_for_active_cluster.js --platform=node --target=es2022",
     "build-local-dump": "esbuild src/dump/dump.ts --bundle --outfile=dist/detect_for_local_dump.js --platform=node --target=es2022 --format=esm"
   },
   "devDependencies": {
     "esbuild": "^0.19.11",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "@types/node": "^20.11.16"
   },
   "type": "module"
 }

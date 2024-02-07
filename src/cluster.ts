@@ -1,7 +1,7 @@
 import { getOptions } from "./options";
 import { logResults } from "./output";
 
-const EXCLUDED_DBS = ["local"];
+const EXCLUDED_DBS = ["local", "config"];
 
 function getCollectionInfos() {
   // @ts-expect-error

@@ -3,14 +3,14 @@ import { TestCase, runTestCases } from "../utils";
 
 const testCases: TestCase[] = [
   {
-    description: "single-key object",
+    description: "top-level single-key object",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
+            $match: {
+              x: 1,
             },
           },
         ],
@@ -19,16 +19,31 @@ const testCases: TestCase[] = [
     result: Result.SAFE,
   },
   {
-    description: "multi-key object with single-key nested object",
+    description: "top-level single-key object with nested multi-key objects",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
-              b: 1,
-              c: { d: 1 },
+            $match: {
+              x: { x: 1, y: 1 },
+            },
+          },
+        ],
+      },
+    },
+    result: Result.VIEW_UNSAFE,
+  },
+  {
+    description: "top-level multi-key object",
+    collection: {
+      type: "view",
+      options: {
+        pipeline: [
+          {
+            $match: {
+              x: 1,
+              y: 1,
             },
           },
         ],
@@ -37,15 +52,15 @@ const testCases: TestCase[] = [
     result: Result.SAFE,
   },
   {
-    description: "multi-key object with multi-key nested object",
+    description: "top-level multi-key object with nested multi-key objects",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
-              b: { c: 1, d: 1 },
+            $match: {
+              x: { x: 1, y: 1 },
+              y: 1,
             },
           },
         ],
@@ -55,6 +70,6 @@ const testCases: TestCase[] = [
   },
 ];
 
-describe("$addFields", () => {
+describe("$match", () => {
   runTestCases(testCases);
 });

@@ -62,7 +62,7 @@ const testCases: TestCase[] = [
     result: Result.SAFE,
   },
   {
-    description: "top-level multi-field match",
+    description: "top-level multi-key match",
     collection: {
       options: {
         validator: { x: 1, y: 1 },
@@ -71,7 +71,7 @@ const testCases: TestCase[] = [
     result: Result.SAFE,
   },
   {
-    description: "nested multi-field match",
+    description: "nested multi-key match",
     collection: {
       options: {
         validator: { x: 1, y: { $eq: { x: 1, y: 1 } } },
@@ -80,7 +80,7 @@ const testCases: TestCase[] = [
     result: Result.VALIDATOR_UNSAFE,
   },
   {
-    description: "nested $jsonSchema and multi-field match",
+    description: "nested $jsonSchema and multi-key match",
     collection: {
       options: {
         validator: {

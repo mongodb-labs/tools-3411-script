@@ -3,15 +3,33 @@ import { TestCase, runTestCases } from "../utils";
 
 const testCases: TestCase[] = [
   {
-    description: "single-key object",
+    description: "unknown stage",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
-            },
+            $unknown: 100,
+          },
+        ],
+      },
+    },
+    result: Result.VIEW_UNSAFE,
+  },
+  {
+    description: "multiple stages all safe",
+    collection: {
+      type: "view",
+      options: {
+        pipeline: [
+          {
+            $skip: 100,
+          },
+          {
+            $limit: 100,
+          },
+          {
+            $sort: { x: 1 },
           },
         ],
       },
@@ -19,34 +37,19 @@ const testCases: TestCase[] = [
     result: Result.SAFE,
   },
   {
-    description: "multi-key object with single-key nested object",
+    description: "multiple stages not all safe",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
-              b: 1,
-              c: { d: 1 },
-            },
+            $skip: 100,
           },
-        ],
-      },
-    },
-    result: Result.SAFE,
-  },
-  {
-    description: "multi-key object with multi-key nested object",
-    collection: {
-      type: "view",
-      options: {
-        pipeline: [
           {
-            $addFields: {
-              a: "$x",
-              b: { c: 1, d: 1 },
-            },
+            $sort: { x: 1, y: 1 },
+          },
+          {
+            $limit: 100,
           },
         ],
       },
@@ -55,6 +58,6 @@ const testCases: TestCase[] = [
   },
 ];
 
-describe("$addFields", () => {
+describe("misc", () => {
   runTestCases(testCases);
 });

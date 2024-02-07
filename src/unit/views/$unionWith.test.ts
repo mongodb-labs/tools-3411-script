@@ -3,14 +3,29 @@ import { TestCase, runTestCases } from "../utils";
 
 const testCases: TestCase[] = [
   {
-    description: "single-key object",
+    description: "string",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
+            $unionWith: "collection",
+          },
+        ],
+      },
+    },
+    result: Result.SAFE,
+  },
+  {
+    description: "pipeline with no multi-key documents",
+    collection: {
+      type: "view",
+      options: {
+        pipeline: [
+          {
+            $unionWith: {
+              coll: "collection",
+              pipeline: [{ $sort: { x: 1 } }],
             },
           },
         ],
@@ -19,33 +34,15 @@ const testCases: TestCase[] = [
     result: Result.SAFE,
   },
   {
-    description: "multi-key object with single-key nested object",
+    description: "pipeline with multi-key documents",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
-              b: 1,
-              c: { d: 1 },
-            },
-          },
-        ],
-      },
-    },
-    result: Result.SAFE,
-  },
-  {
-    description: "multi-key object with multi-key nested object",
-    collection: {
-      type: "view",
-      options: {
-        pipeline: [
-          {
-            $addFields: {
-              a: "$x",
-              b: { c: 1, d: 1 },
+            $unionWith: {
+              coll: "collection",
+              pipeline: [{ $sort: { x: 1, y: 1 } }],
             },
           },
         ],
@@ -55,6 +52,6 @@ const testCases: TestCase[] = [
   },
 ];
 
-describe("$addFields", () => {
+describe("$unionWith", () => {
   runTestCases(testCases);
 });

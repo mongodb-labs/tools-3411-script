@@ -9,7 +9,7 @@ const testCases: TestCase[] = [
       options: {
         pipeline: [
           {
-            $addFields: {
+            $set: {
               a: "$x",
             },
           },
@@ -25,10 +25,10 @@ const testCases: TestCase[] = [
       options: {
         pipeline: [
           {
-            $addFields: {
+            $set: {
               a: "$x",
               b: 1,
-              c: { d: 1 },
+              c: { $literal: { d: 1 } },
             },
           },
         ],
@@ -43,9 +43,9 @@ const testCases: TestCase[] = [
       options: {
         pipeline: [
           {
-            $addFields: {
+            $set: {
               a: "$x",
-              b: { c: 1, d: 1 },
+              c: { $literal: { d: 1, e: 1 } },
             },
           },
         ],
@@ -55,6 +55,6 @@ const testCases: TestCase[] = [
   },
 ];
 
-describe("$addFields", () => {
+describe("$set", () => {
   runTestCases(testCases);
 });

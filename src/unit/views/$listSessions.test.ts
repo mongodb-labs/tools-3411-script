@@ -3,15 +3,13 @@ import { TestCase, runTestCases } from "../utils";
 
 const testCases: TestCase[] = [
   {
-    description: "single-key object",
+    description: "empty object",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
-            },
+            $listSessions: {},
           },
         ],
       },
@@ -19,17 +17,13 @@ const testCases: TestCase[] = [
     result: Result.SAFE,
   },
   {
-    description: "multi-key object with single-key nested object",
+    description: "allUsers",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
-              b: 1,
-              c: { d: 1 },
-            },
+            $listSessions: { allUsers: true },
           },
         ],
       },
@@ -37,24 +31,27 @@ const testCases: TestCase[] = [
     result: Result.SAFE,
   },
   {
-    description: "multi-key object with multi-key nested object",
+    description: "users",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
-              b: { c: 1, d: 1 },
+            $listSessions: {
+              users: [
+                { user: "foo", db: "production" },
+                { user: "bar", db: "development" },
+                { user: "baz", db: "staging" },
+              ],
             },
           },
         ],
       },
     },
-    result: Result.VIEW_UNSAFE,
+    result: Result.SAFE,
   },
 ];
 
-describe("$addFields", () => {
+describe("$listSessions", () => {
   runTestCases(testCases);
 });

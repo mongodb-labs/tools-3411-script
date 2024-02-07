@@ -3,14 +3,28 @@ import { TestCase, runTestCases } from "../utils";
 
 const testCases: TestCase[] = [
   {
-    description: "single-key object",
+    description: "string",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
+            $sortByCount: "field",
+          },
+        ],
+      },
+    },
+    result: Result.SAFE,
+  },
+  {
+    description: "single-key object expression",
+    collection: {
+      type: "view",
+      options: {
+        pipeline: [
+          {
+            $sortByCount: {
+              $mergeObjects: ["$field", { $literal: { x: 1 } }],
             },
           },
         ],
@@ -19,33 +33,14 @@ const testCases: TestCase[] = [
     result: Result.SAFE,
   },
   {
-    description: "multi-key object with single-key nested object",
+    description: "multi-key object expression",
     collection: {
       type: "view",
       options: {
         pipeline: [
           {
-            $addFields: {
-              a: "$x",
-              b: 1,
-              c: { d: 1 },
-            },
-          },
-        ],
-      },
-    },
-    result: Result.SAFE,
-  },
-  {
-    description: "multi-key object with multi-key nested object",
-    collection: {
-      type: "view",
-      options: {
-        pipeline: [
-          {
-            $addFields: {
-              a: "$x",
-              b: { c: 1, d: 1 },
+            $sortByCount: {
+              $mergeObjects: ["$field", { $literal: { x: 1, y: 1 } }],
             },
           },
         ],
@@ -55,6 +50,6 @@ const testCases: TestCase[] = [
   },
 ];
 
-describe("$addFields", () => {
+describe("$sortByCount", () => {
   runTestCases(testCases);
 });

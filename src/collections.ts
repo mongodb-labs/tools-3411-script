@@ -1,4 +1,4 @@
-import { isSafeStage } from "./stage";
+import { isStageSafe } from "./stage";
 import { isValidatorSafe } from "./validator";
 
 export enum Result {
@@ -7,26 +7,26 @@ export enum Result {
   VALIDATOR_UNSAFE,
 }
 
-export function isSafeCollection(collection: any): Result {
+export function checkCollectionSafety(collection: any): Result {
   if (collection?.type === "view" && collection?.options?.pipeline != null) {
-    return isSafePipeline(collection.options.pipeline);
+    return checkPipelineSafety(collection.options.pipeline);
   }
   if (collection?.options?.validator != null) {
-    return isSafeValidator(collection);
+    return checkValidatorSafety(collection.options.validator);
   }
   return Result.SAFE;
 }
 
-function isSafePipeline(pipeline: any[]): Result {
-  if (!pipeline.every(isSafeStage)) {
-    return Result.VIEW_UNSAFE;
+function checkPipelineSafety(pipeline: any[]): Result {
+  if (pipeline.every(isStageSafe)) {
+    return Result.SAFE;
   }
-  return Result.SAFE;
+  return Result.VIEW_UNSAFE;
 }
 
-function isSafeValidator(validator: any): Result {
+function checkValidatorSafety(validator: any[]): Result {
   if (isValidatorSafe(validator)) {
-    return Result.VALIDATOR_UNSAFE;
+    return Result.SAFE;
   }
-  return Result.SAFE;
+  return Result.VALIDATOR_UNSAFE;
 }

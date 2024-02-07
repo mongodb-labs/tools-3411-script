@@ -1,4 +1,4 @@
-export function isSafeStage(stage: any): boolean {
+export function isStageSafe(stage: any): boolean {
   if (stage == null || typeof stage !== "object") {
     return true;
   }

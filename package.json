@@ -11,7 +11,15 @@
   "devDependencies": {
     "esbuild": "^0.19.11",
     "typescript": "^5.3.3",
-    "@types/node": "^20.11.16"
+    "@types/node": "^20.11.16",
+    "@types/jest": "^29.5.11",
+    "ts-jest": "^29.1.1",
+    "jest": "^29.7.0"
   },
-  "type": "module"
+  "type": "module",
+  "jest": {
+    "transform": {},
+    "preset": "ts-jest",
+    "testEnvironment": "node"
+  }
 }

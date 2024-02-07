@@ -3881,7 +3881,7 @@ function getOptions() {
 }
 
 // src/stage.ts
-function isSafeStage(stage) {
+function isStageSafe(stage) {
   if (stage == null || typeof stage !== "object") {
     return true;
   }
@@ -3971,7 +3971,9 @@ function isValidatorSafe(validator) {
   if (isJSONSchemaOnly(validator)) {
     return true;
   }
-  return !Object.values(validator).some(hasMultiKeyNonJSONSchemaObjectAtAnyLevel);
+  return !Object.values(validator).some(
+    hasMultiKeyNonJSONSchemaObjectAtAnyLevel
+  );
 }
 function hasMultiKeyNonJSONSchemaObjectAtAnyLevel(obj) {
   if (obj == null || typeof obj !== "object") {
@@ -3994,26 +3996,26 @@ function isJSONSchemaOnly(obj) {
 }
 
 // src/collections.ts
-function isSafeCollection(collection) {
+function checkCollectionSafety(collection) {
   if (collection?.type === "view" && collection?.options?.pipeline != null) {
-    return isSafePipeline(collection.options.pipeline);
+    return checkPipelineSafety(collection.options.pipeline);
   }
   if (collection?.options?.validator != null) {
-    return isSafeValidator(collection);
+    return checkValidatorSafety(collection.options.validator);
   }
   return 0 /* SAFE */;
 }
-function isSafePipeline(pipeline2) {
-  if (!pipeline2.every(isSafeStage)) {
-    return 1 /* VIEW_UNSAFE */;
+function checkPipelineSafety(pipeline2) {
+  if (pipeline2.every(isStageSafe)) {
+    return 0 /* SAFE */;
   }
-  return 0 /* SAFE */;
+  return 1 /* VIEW_UNSAFE */;
 }
-function isSafeValidator(validator) {
+function checkValidatorSafety(validator) {
   if (isValidatorSafe(validator)) {
-    return 2 /* VALIDATOR_UNSAFE */;
+    return 0 /* SAFE */;
   }
-  return 0 /* SAFE */;
+  return 2 /* VALIDATOR_UNSAFE */;
 }
 
 // src/output.ts
@@ -4029,7 +4031,7 @@ function getUnsafeCollections(collections) {
     unsafeValidators: []
   };
   return collections.reduce((unsafeCollections, collection) => {
-    const result = isSafeCollection(collection);
+    const result = checkCollectionSafety(collection);
     if (result === 1 /* VIEW_UNSAFE */) {
       unsafeCollections.unsafeViews.push(collection);
     }

@@ -1,4 +1,4 @@
-import { Result, isSafeCollection } from "./collections";
+import { Result, checkCollectionSafety } from "./collections";
 import { Verbosity } from "./options";
 
 export function logResults(collections: any[], verbosity: Verbosity): void {
@@ -17,7 +17,7 @@ function getUnsafeCollections(collections: any[]): {
     unsafeValidators: [],
   };
   return collections.reduce((unsafeCollections: any, collection: any) => {
-    const result = isSafeCollection(collection);
+    const result = checkCollectionSafety(collection);
     if (result === Result.VIEW_UNSAFE) {
       unsafeCollections.unsafeViews.push(collection);
     }
@@ -41,7 +41,10 @@ function logUnsafeViews(unsafeViews: any[], verbosity: Verbosity): void {
   });
 }
 
-function logUnsafeValidators(unsafeValidators: any[], verbosity: Verbosity): void {
+function logUnsafeValidators(
+  unsafeValidators: any[],
+  verbosity: Verbosity
+): void {
   if (unsafeValidators.length === 0) {
     return;
   }

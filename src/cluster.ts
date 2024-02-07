@@ -24,6 +24,6 @@ function getCollectionInfosForDatabase(databaseInfo: any) {
   }));
 }
 
-const {verbosity} = getOptions();
+const { verbosity } = getOptions();
 const collectionInfos = getCollectionInfos();
 logResults(collectionInfos, verbosity);

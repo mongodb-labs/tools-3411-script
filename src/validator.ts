@@ -5,7 +5,9 @@ export function isValidatorSafe(validator: any): boolean {
   if (isJSONSchemaOnly(validator)) {
     return true;
   }
-  return !Object.values(validator).some(hasMultiKeyNonJSONSchemaObjectAtAnyLevel)
+  return !Object.values(validator).some(
+    hasMultiKeyNonJSONSchemaObjectAtAnyLevel
+  );
 }
 
 function hasMultiKeyNonJSONSchemaObjectAtAnyLevel(obj: any): boolean {

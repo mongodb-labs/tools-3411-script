@@ -43,7 +43,9 @@ Run the downloaded file against your cluster via the following command, changing
 mongosh "mongodb://localhost:27017" -f detect_for_active_cluster.js
 ```
 
-The script will run [`listDatabases`](https://www.mongodb.com/docs/manual/reference/command/listDatabases/) and [`db.getCollectionInfos()`](https://www.mongodb.com/docs/manual/reference/method/db.getCollectionInfos/) to find all views and all collections with validators. This should have minimal performance impact on live clusters. The script will then output view pipelines and validators which it couldn't confirm are safe, if any. These view pipelines and validators could be susceptible to the issue, so you will need to audit them to check whether they are correct.
+The script will run [`listDatabases`](https://www.mongodb.com/docs/manual/reference/command/listDatabases/) and [`db.getCollectionInfos()`](https://www.mongodb.com/docs/manual/reference/method/db.getCollectionInfos/) to find all views and all collections with validators. This should have minimal performance impact on live clusters. Users with the [`readAnyDatabase`](https://www.mongodb.com/docs/manual/reference/built-in-roles/#mongodb-authrole-readAnyDatabase) role will have sufficient permissions to run the script. If you need to create a custom user or role, check the documentation on [managing users and roles](https://www.mongodb.com/docs/manual/tutorial/manage-users-and-roles/).
+
+The script will then output view pipelines and validators which it couldn't confirm are safe, if any. These view pipelines and validators could be susceptible to the issue, so you will need to audit them to check whether they are correct.
 
 ### Running Against a Local Dump
 

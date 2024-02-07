@@ -1,3 +1,4 @@
+import { getOptions } from "./options";
 import { logResults } from "./output";
 
 const EXCLUDED_DBS = ["local"];
@@ -23,5 +24,6 @@ function getCollectionInfosForDatabase(databaseInfo: any) {
   }));
 }
 
+const {verbosity} = getOptions();
 const collectionInfos = getCollectionInfos();
-logResults(collectionInfos);
+logResults(collectionInfos, verbosity);

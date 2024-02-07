@@ -1,3 +1,6 @@
+import { isSafeStage } from "./stage";
+import { isValidatorSafe } from "./validator";
+
 export enum Result {
   SAFE,
   VIEW_UNSAFE,
@@ -6,7 +9,7 @@ export enum Result {
 
 export function isSafeCollection(collection: any): Result {
   if (collection?.type === "view" && collection?.options?.pipeline != null) {
-    return isSafeView(collection);
+    return isSafePipeline(collection.options.pipeline);
   }
   if (collection?.options?.validator != null) {
     return isSafeValidator(collection);
@@ -14,17 +17,15 @@ export function isSafeCollection(collection: any): Result {
   return Result.SAFE;
 }
 
-function isSafeView(view: any): Result {
-  // TODO implement
-  if (Math.random() > 0.9) {
+function isSafePipeline(pipeline: any[]): Result {
+  if (!pipeline.every(isSafeStage)) {
     return Result.VIEW_UNSAFE;
   }
   return Result.SAFE;
 }
 
-function isSafeValidator(collection: any): Result {
-  // TODO implement
-  if (Math.random() > 0.9) {
+function isSafeValidator(validator: any): Result {
+  if (isValidatorSafe(validator)) {
     return Result.VALIDATOR_UNSAFE;
   }
   return Result.SAFE;

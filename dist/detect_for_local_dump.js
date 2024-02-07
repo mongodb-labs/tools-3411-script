@@ -3847,7 +3847,7 @@ function int32ToBytes(n) {
   return buffer2;
 }
 
-// src/dump/options.ts
+// src/options.ts
 function getOptions() {
   let options = {};
   switch (process.env.DUMP_TYPE) {
@@ -3863,38 +3863,164 @@ function getOptions() {
         `Unknown DUMP_TYPE value '${process.env.mode}'. DUMP_TYPE must be one of ['directory', 'archive']`
       );
   }
+  switch (process.env.VERBOSITY) {
+    case void 0:
+    case "full":
+      options.verbosity = "full";
+      break;
+    case "collectionNameOnly":
+      options.verbosity = "collectionNameOnly";
+      break;
+    default:
+      throw new Error(
+        `Unknown VERBOSITY value '${process.env.VERBOSITY}'. VERBOSITY must be one of ['full', 'collectionNameOnly']`
+      );
+  }
   options.path = process.env.DUMP_PATH;
   return options;
+}
+
+// src/stage.ts
+function isSafeStage(stage) {
+  if (stage == null || typeof stage !== "object") {
+    return true;
+  }
+  const keys = Object.keys(stage);
+  if (keys.length === 0) {
+    return true;
+  }
+  if (keys.length > 1) {
+    return false;
+  }
+  const key = keys[0];
+  const inner = stage[key];
+  switch (key) {
+    case "$changeStream":
+    case "$changeStreamSplitLargeEvent":
+    case "$collStats":
+    case "$count":
+    case "$currentOp":
+    case "$densify":
+    case "$indexStats":
+    case "$limit":
+    case "$listLocalSessions":
+    case "$listSampledQueries":
+    case "$listSearchIndexes":
+    case "$listSessions":
+    case "$out":
+    case "$planCacheStats":
+    case "$sample":
+    case "$shardedDataDistribution":
+    case "$skip":
+    case "$unset":
+    case "$unwind":
+      return true;
+    case "$addFields":
+    case "$project":
+    case "$set":
+    case "$match":
+    case "$replaceRoot":
+    case "$lookup":
+    case "$group":
+    case "$bucket":
+    case "$bucketAuto":
+    case "$facet":
+    case "$fill":
+    case "$geoNear":
+    case "$graphLookup":
+    case "$setWindowFields":
+    case "$unionWith":
+    case "$search":
+    case "$searchMeta":
+      return !hasMultiKeyObjectOutsideTopLevel(inner);
+    case "$documents":
+    case "$redact":
+    case "$replaceWith":
+    case "$sortByCount":
+    case "$sort":
+      return !hasMultiKeyObjectAtAnyLevel(inner);
+    default:
+      return false;
+  }
+}
+function hasMultiKeyObjectOutsideTopLevel(obj) {
+  if (obj == null || typeof obj !== "object") {
+    return false;
+  }
+  return Object.values(obj).some(hasMultiKeyObjectAtAnyLevel);
+}
+function hasMultiKeyObjectAtAnyLevel(obj) {
+  if (obj == null || typeof obj !== "object") {
+    return false;
+  }
+  if (Array.isArray(obj)) {
+    return obj.some(hasMultiKeyObjectAtAnyLevel);
+  }
+  const values = Object.values(obj);
+  if (values.length > 1) {
+    return true;
+  }
+  return values.some(hasMultiKeyObjectAtAnyLevel);
+}
+
+// src/validator.ts
+function isValidatorSafe(validator) {
+  if (validator == null || typeof validator !== "object") {
+    return true;
+  }
+  if (isJSONSchemaOnly(validator)) {
+    return true;
+  }
+  return !Object.values(validator).some(hasMultiKeyNonJSONSchemaObjectAtAnyLevel);
+}
+function hasMultiKeyNonJSONSchemaObjectAtAnyLevel(obj) {
+  if (obj == null || typeof obj !== "object") {
+    return false;
+  }
+  if (Array.isArray(obj)) {
+    return obj.some(hasMultiKeyNonJSONSchemaObjectAtAnyLevel);
+  }
+  if (isJSONSchemaOnly(obj)) {
+    return false;
+  }
+  const values = Object.values(obj);
+  if (values.length > 1) {
+    return true;
+  }
+  return values.some(hasMultiKeyNonJSONSchemaObjectAtAnyLevel);
+}
+function isJSONSchemaOnly(obj) {
+  return Object.keys(obj).length === 1 && "$jsonSchema" in obj;
 }
 
 // src/collections.ts
 function isSafeCollection(collection) {
   if (collection?.type === "view" && collection?.options?.pipeline != null) {
-    return isSafeView(collection);
+    return isSafePipeline(collection.options.pipeline);
   }
   if (collection?.options?.validator != null) {
     return isSafeValidator(collection);
   }
   return 0 /* SAFE */;
 }
-function isSafeView(view) {
-  if (Math.random() > 0.9) {
+function isSafePipeline(pipeline2) {
+  if (!pipeline2.every(isSafeStage)) {
     return 1 /* VIEW_UNSAFE */;
   }
   return 0 /* SAFE */;
 }
-function isSafeValidator(collection) {
-  if (Math.random() > 0.9) {
+function isSafeValidator(validator) {
+  if (isValidatorSafe(validator)) {
     return 2 /* VALIDATOR_UNSAFE */;
   }
   return 0 /* SAFE */;
 }
 
 // src/output.ts
-function logResults(collections) {
+function logResults(collections, verbosity) {
   const { unsafeViews, unsafeValidators } = getUnsafeCollections(collections);
-  logUnsafeViews(unsafeViews);
-  logUnsafeValidators(unsafeValidators);
+  logUnsafeViews(unsafeViews, verbosity);
+  logUnsafeValidators(unsafeValidators, verbosity);
   logSummary(unsafeViews.length, unsafeValidators.length, collections.length);
 }
 function getUnsafeCollections(collections) {
@@ -3913,24 +4039,28 @@ function getUnsafeCollections(collections) {
     return unsafeCollections;
   }, initialUnsafeCollections);
 }
-function logUnsafeViews(unsafeViews) {
+function logUnsafeViews(unsafeViews, verbosity) {
   if (unsafeViews.length === 0) {
     return;
   }
   console.log("----- Views to audit -----");
   unsafeViews.forEach((view) => {
     console.log(`${view.db}.${view.name}`);
-    console.log(JSON.stringify(view.options.pipeline, null, 2));
+    if (verbosity === "full") {
+      console.log(JSON.stringify(view.options.pipeline, null, 2));
+    }
   });
 }
-function logUnsafeValidators(unsafeValidators) {
+function logUnsafeValidators(unsafeValidators, verbosity) {
   if (unsafeValidators.length === 0) {
     return;
   }
   console.log("----- Validators to audit -----");
   unsafeValidators.forEach((collection) => {
     console.log(`${collection.db}.${collection.name}`);
-    console.log(JSON.stringify(collection.options.validator, null, 2));
+    if (verbosity === "full") {
+      console.log(JSON.stringify(collection.options.validator, null, 2));
+    }
   });
 }
 function logSummary(numUnsafeViews, numUnsafeValidators, numTotalCollections) {
@@ -3974,7 +4104,7 @@ async function main() {
   const filteredCollections = collections.filter(
     (collection) => collection?.type === "view" || collection?.options?.validator != null
   );
-  logResults(filteredCollections);
+  logResults(filteredCollections, options.verbosity);
 }
 async function getMetadata({ mode, path: path2 }) {
   switch (mode) {

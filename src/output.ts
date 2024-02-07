@@ -1,9 +1,10 @@
 import { Result, isSafeCollection } from "./collections";
+import { Verbosity } from "./options";
 
-export function logResults(collections: any[]): void {
+export function logResults(collections: any[], verbosity: Verbosity): void {
   const { unsafeViews, unsafeValidators } = getUnsafeCollections(collections);
-  logUnsafeViews(unsafeViews);
-  logUnsafeValidators(unsafeValidators);
+  logUnsafeViews(unsafeViews, verbosity);
+  logUnsafeValidators(unsafeValidators, verbosity);
   logSummary(unsafeViews.length, unsafeValidators.length, collections.length);
 }
 
@@ -27,25 +28,29 @@ function getUnsafeCollections(collections: any[]): {
   }, initialUnsafeCollections);
 }
 
-function logUnsafeViews(unsafeViews: any[]): void {
+function logUnsafeViews(unsafeViews: any[], verbosity: Verbosity): void {
   if (unsafeViews.length === 0) {
     return;
   }
   console.log("----- Views to audit -----");
   unsafeViews.forEach((view) => {
     console.log(`${view.db}.${view.name}`);
-    console.log(JSON.stringify(view.options.pipeline, null, 2));
+    if (verbosity === "full") {
+      console.log(JSON.stringify(view.options.pipeline, null, 2));
+    }
   });
 }
 
-function logUnsafeValidators(unsafeValidators: any[]): void {
+function logUnsafeValidators(unsafeValidators: any[], verbosity: Verbosity): void {
   if (unsafeValidators.length === 0) {
     return;
   }
   console.log("----- Validators to audit -----");
   unsafeValidators.forEach((collection) => {
     console.log(`${collection.db}.${collection.name}`);
-    console.log(JSON.stringify(collection.options.validator, null, 2));
+    if (verbosity === "full") {
+      console.log(JSON.stringify(collection.options.validator, null, 2));
+    }
   });
 }
 

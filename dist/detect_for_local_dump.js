@@ -93,8 +93,8 @@ var BSONError = class extends Error {
   get name() {
     return "BSONError";
   }
-  constructor(message) {
-    super(message);
+  constructor(message, options) {
+    super(message, options);
   }
   static isBSONError(value) {
     return value != null && typeof value === "object" && "bsonError" in value && value.bsonError === true && "name" in value && "message" in value && "stack" in value;
@@ -116,6 +116,68 @@ var BSONRuntimeError = class extends BSONError {
     super(message);
   }
 };
+var FIRST_BIT = 128;
+var FIRST_TWO_BITS = 192;
+var FIRST_THREE_BITS = 224;
+var FIRST_FOUR_BITS = 240;
+var FIRST_FIVE_BITS = 248;
+var TWO_BIT_CHAR = 192;
+var THREE_BIT_CHAR = 224;
+var FOUR_BIT_CHAR = 240;
+var CONTINUING_CHAR = 128;
+function validateUtf8(bytes, start, end) {
+  let continuation = 0;
+  for (let i = start; i < end; i += 1) {
+    const byte = bytes[i];
+    if (continuation) {
+      if ((byte & FIRST_TWO_BITS) !== CONTINUING_CHAR) {
+        return false;
+      }
+      continuation -= 1;
+    } else if (byte & FIRST_BIT) {
+      if ((byte & FIRST_THREE_BITS) === TWO_BIT_CHAR) {
+        continuation = 1;
+      } else if ((byte & FIRST_FOUR_BITS) === THREE_BIT_CHAR) {
+        continuation = 2;
+      } else if ((byte & FIRST_FIVE_BITS) === FOUR_BIT_CHAR) {
+        continuation = 3;
+      } else {
+        return false;
+      }
+    }
+  }
+  return !continuation;
+}
+function tryLatin(uint8array, start, end) {
+  if (uint8array.length === 0) {
+    return "";
+  }
+  const stringByteLength = end - start;
+  if (stringByteLength === 0) {
+    return "";
+  }
+  if (stringByteLength > 20) {
+    return null;
+  }
+  if (stringByteLength === 1 && uint8array[start] < 128) {
+    return String.fromCharCode(uint8array[start]);
+  }
+  if (stringByteLength === 2 && uint8array[start] < 128 && uint8array[start + 1] < 128) {
+    return String.fromCharCode(uint8array[start]) + String.fromCharCode(uint8array[start + 1]);
+  }
+  if (stringByteLength === 3 && uint8array[start] < 128 && uint8array[start + 1] < 128 && uint8array[start + 2] < 128) {
+    return String.fromCharCode(uint8array[start]) + String.fromCharCode(uint8array[start + 1]) + String.fromCharCode(uint8array[start + 2]);
+  }
+  const latinBytes = [];
+  for (let i = start; i < end; i++) {
+    const byte = uint8array[i];
+    if (byte > 127) {
+      return null;
+    }
+    latinBytes.push(byte);
+  }
+  return String.fromCharCode(...latinBytes);
+}
 function nodejsMathRandomBytes(byteLength) {
   return nodeJsByteUtils.fromNumberArray(Array.from({ length: byteLength }, () => Math.floor(Math.random() * 256)));
 }
@@ -170,8 +232,23 @@ var nodeJsByteUtils = {
   fromUTF8(text) {
     return Buffer.from(text, "utf8");
   },
-  toUTF8(buffer2, start, end) {
-    return nodeJsByteUtils.toLocalBufferType(buffer2).toString("utf8", start, end);
+  toUTF8(buffer2, start, end, fatal) {
+    const basicLatin = end - start <= 20 ? tryLatin(buffer2, start, end) : null;
+    if (basicLatin != null) {
+      return basicLatin;
+    }
+    const string = nodeJsByteUtils.toLocalBufferType(buffer2).toString("utf8", start, end);
+    if (fatal) {
+      for (let i = 0; i < string.length; i++) {
+        if (string.charCodeAt(i) === 65533) {
+          if (!validateUtf8(buffer2, start, end)) {
+            throw new BSONError("Invalid UTF-8 string in BSON document");
+          }
+          break;
+        }
+      }
+    }
+    return string;
   },
   utf8ByteLength(input) {
     return Buffer.byteLength(input, "utf8");
@@ -275,8 +352,19 @@ var webByteUtils = {
   fromUTF8(text) {
     return new TextEncoder().encode(text);
   },
-  toUTF8(uint8array, start, end) {
-    return new TextDecoder("utf8", { fatal: false }).decode(uint8array.slice(start, end));
+  toUTF8(uint8array, start, end, fatal) {
+    const basicLatin = end - start <= 20 ? tryLatin(uint8array, start, end) : null;
+    if (basicLatin != null) {
+      return basicLatin;
+    }
+    if (fatal) {
+      try {
+        return new TextDecoder("utf8", { fatal }).decode(uint8array.slice(start, end));
+      } catch (cause) {
+        throw new BSONError("Invalid UTF-8 string in BSON document", { cause });
+      }
+    }
+    return new TextDecoder("utf8", { fatal }).decode(uint8array.slice(start, end));
   },
   utf8ByteLength(input) {
     return webByteUtils.fromUTF8(input).byteLength;
@@ -379,8 +467,8 @@ var Binary = class _Binary extends BSONValue {
     if (encoding === "base64")
       return ByteUtils.toBase64(this.buffer);
     if (encoding === "utf8" || encoding === "utf-8")
-      return ByteUtils.toUTF8(this.buffer, 0, this.buffer.byteLength);
-    return ByteUtils.toUTF8(this.buffer, 0, this.buffer.byteLength);
+      return ByteUtils.toUTF8(this.buffer, 0, this.buffer.byteLength, false);
+    return ByteUtils.toUTF8(this.buffer, 0, this.buffer.byteLength, false);
   }
   toExtendedJSON(options) {
     options = options || {};
@@ -2344,38 +2432,6 @@ var Timestamp = class _Timestamp extends LongWithoutOverridesClass {
   }
 };
 Timestamp.MAX_VALUE = Long.MAX_UNSIGNED_VALUE;
-var FIRST_BIT = 128;
-var FIRST_TWO_BITS = 192;
-var FIRST_THREE_BITS = 224;
-var FIRST_FOUR_BITS = 240;
-var FIRST_FIVE_BITS = 248;
-var TWO_BIT_CHAR = 192;
-var THREE_BIT_CHAR = 224;
-var FOUR_BIT_CHAR = 240;
-var CONTINUING_CHAR = 128;
-function validateUtf8(bytes, start, end) {
-  let continuation = 0;
-  for (let i = start; i < end; i += 1) {
-    const byte = bytes[i];
-    if (continuation) {
-      if ((byte & FIRST_TWO_BITS) !== CONTINUING_CHAR) {
-        return false;
-      }
-      continuation -= 1;
-    } else if (byte & FIRST_BIT) {
-      if ((byte & FIRST_THREE_BITS) === TWO_BIT_CHAR) {
-        continuation = 1;
-      } else if ((byte & FIRST_FOUR_BITS) === THREE_BIT_CHAR) {
-        continuation = 2;
-      } else if ((byte & FIRST_FIVE_BITS) === FOUR_BIT_CHAR) {
-        continuation = 3;
-      } else {
-        return false;
-      }
-    }
-  }
-  return !continuation;
-}
 var JS_INT_MAX_LONG = Long.fromNumber(JS_INT_MAX);
 var JS_INT_MIN_LONG = Long.fromNumber(JS_INT_MIN);
 function internalDeserialize(buffer2, options, isArray) {
@@ -2463,7 +2519,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
     }
     if (i >= buffer2.byteLength)
       throw new BSONError("Bad BSON Document: illegal CString");
-    const name = isArray ? arrayIndex++ : ByteUtils.toUTF8(buffer2, index, i);
+    const name = isArray ? arrayIndex++ : ByteUtils.toUTF8(buffer2, index, i, false);
     let shouldValidateKey = true;
     if (globalUTFValidation || utf8KeysSet.has(name)) {
       shouldValidateKey = validationSetting;
@@ -2480,7 +2536,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
       if (stringSize <= 0 || stringSize > buffer2.length - index || buffer2[index + stringSize - 1] !== 0) {
         throw new BSONError("bad string length in bson");
       }
-      value = getValidatedString(buffer2, index, index + stringSize - 1, shouldValidateKey);
+      value = ByteUtils.toUTF8(buffer2, index, index + stringSize - 1, shouldValidateKey);
       index = index + stringSize;
     } else if (elementType === BSON_DATA_OID) {
       const oid = ByteUtils.allocate(12);
@@ -2615,7 +2671,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
       }
       if (i >= buffer2.length)
         throw new BSONError("Bad BSON Document: illegal CString");
-      const source = ByteUtils.toUTF8(buffer2, index, i);
+      const source = ByteUtils.toUTF8(buffer2, index, i, false);
       index = i + 1;
       i = index;
       while (buffer2[i] !== 0 && i < buffer2.length) {
@@ -2623,7 +2679,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
       }
       if (i >= buffer2.length)
         throw new BSONError("Bad BSON Document: illegal CString");
-      const regExpOptions = ByteUtils.toUTF8(buffer2, index, i);
+      const regExpOptions = ByteUtils.toUTF8(buffer2, index, i, false);
       index = i + 1;
       const optionsArray = new Array(regExpOptions.length);
       for (i = 0; i < regExpOptions.length; i++) {
@@ -2647,7 +2703,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
       }
       if (i >= buffer2.length)
         throw new BSONError("Bad BSON Document: illegal CString");
-      const source = ByteUtils.toUTF8(buffer2, index, i);
+      const source = ByteUtils.toUTF8(buffer2, index, i, false);
       index = i + 1;
       i = index;
       while (buffer2[i] !== 0 && i < buffer2.length) {
@@ -2655,7 +2711,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
       }
       if (i >= buffer2.length)
         throw new BSONError("Bad BSON Document: illegal CString");
-      const regExpOptions = ByteUtils.toUTF8(buffer2, index, i);
+      const regExpOptions = ByteUtils.toUTF8(buffer2, index, i, false);
       index = i + 1;
       value = new BSONRegExp(source, regExpOptions);
     } else if (elementType === BSON_DATA_SYMBOL) {
@@ -2663,7 +2719,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
       if (stringSize <= 0 || stringSize > buffer2.length - index || buffer2[index + stringSize - 1] !== 0) {
         throw new BSONError("bad string length in bson");
       }
-      const symbol = getValidatedString(buffer2, index, index + stringSize - 1, shouldValidateKey);
+      const symbol = ByteUtils.toUTF8(buffer2, index, index + stringSize - 1, shouldValidateKey);
       value = promoteValues ? symbol : new BSONSymbol(symbol);
       index = index + stringSize;
     } else if (elementType === BSON_DATA_TIMESTAMP) {
@@ -2679,7 +2735,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
       if (stringSize <= 0 || stringSize > buffer2.length - index || buffer2[index + stringSize - 1] !== 0) {
         throw new BSONError("bad string length in bson");
       }
-      const functionString = getValidatedString(buffer2, index, index + stringSize - 1, shouldValidateKey);
+      const functionString = ByteUtils.toUTF8(buffer2, index, index + stringSize - 1, shouldValidateKey);
       value = new Code(functionString);
       index = index + stringSize;
     } else if (elementType === BSON_DATA_CODE_W_SCOPE) {
@@ -2691,7 +2747,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
       if (stringSize <= 0 || stringSize > buffer2.length - index || buffer2[index + stringSize - 1] !== 0) {
         throw new BSONError("bad string length in bson");
       }
-      const functionString = getValidatedString(buffer2, index, index + stringSize - 1, shouldValidateKey);
+      const functionString = ByteUtils.toUTF8(buffer2, index, index + stringSize - 1, shouldValidateKey);
       index = index + stringSize;
       const _index = index;
       const objectSize = buffer2[index] | buffer2[index + 1] << 8 | buffer2[index + 2] << 16 | buffer2[index + 3] << 24;
@@ -2713,7 +2769,7 @@ function deserializeObject(buffer2, index, options, isArray = false) {
           throw new BSONError("Invalid UTF-8 string in BSON document");
         }
       }
-      const namespace = ByteUtils.toUTF8(buffer2, index, index + stringSize - 1);
+      const namespace = ByteUtils.toUTF8(buffer2, index, index + stringSize - 1, false);
       index = index + stringSize;
       const oidBuffer = ByteUtils.allocate(12);
       oidBuffer.set(buffer2.subarray(index, index + 12), 0);
@@ -2749,20 +2805,6 @@ function deserializeObject(buffer2, index, options, isArray = false) {
     return new DBRef(object.$ref, object.$id, object.$db, copy);
   }
   return object;
-}
-function getValidatedString(buffer2, start, end, shouldValidateUtf8) {
-  const value = ByteUtils.toUTF8(buffer2, start, end);
-  if (shouldValidateUtf8) {
-    for (let i = 0; i < value.length; i++) {
-      if (value.charCodeAt(i) === 65533) {
-        if (!validateUtf8(buffer2, start, end)) {
-          throw new BSONError("Invalid UTF-8 string in BSON document");
-        }
-        break;
-      }
-    }
-  }
-  return value;
 }
 var regexp = /\x00/;
 var ignoreKeys = /* @__PURE__ */ new Set(["$db", "$ref", "$id", "$clusterTime"]);
@@ -3718,6 +3760,7 @@ function parseDirectory(directory) {
     const metadata = EJSON.parse(buffer2.toString());
     return {
       name: path.basename(file, METADATA_FILE_SUFFIX),
+      db: path.dirname(file),
       ...metadata
     };
   });

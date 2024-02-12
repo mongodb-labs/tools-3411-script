@@ -248,7 +248,7 @@ function pluralize(str, n) {
 }
 
 // src/cluster.ts
-var EXCLUDED_DBS = ["local"];
+var EXCLUDED_DBS = ["local", "config"];
 function getCollectionInfos() {
   const databaseInfos = db.adminCommand({ listDatabases: 1 }).databases;
   const collectionInfosByDatabase = databaseInfos.filter(({ name }) => !EXCLUDED_DBS.includes(name)).map(getCollectionInfosForDatabase);

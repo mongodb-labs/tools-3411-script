@@ -3759,7 +3759,7 @@ function parseDirectory(directory) {
     }
     const metadata = EJSON.parse(buffer2.toString());
     return {
-      name: path.basename(file, METADATA_FILE_SUFFIX),
+      name: metadata.collectionName ?? path.basename(file, METADATA_FILE_SUFFIX),
       db: path.dirname(file),
       ...metadata
     };

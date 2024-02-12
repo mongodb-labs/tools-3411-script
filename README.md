@@ -31,9 +31,9 @@ This tool can be run against active MongoDB clusters or against local dumps. Aft
 
 Navigate to the file [here](https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_active_cluster.js) in your browser and right click and "Save As..."
 
-Alternatively, Linux or MacOS users can run the following command to get the script:
+Alternatively, you can run the following command to download the file with `curl`:
 ```
-wget "https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_active_cluster.js"
+curl -f -O "https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_active_cluster.js"
 ```
 
 #### Running
@@ -53,9 +53,9 @@ The script will then output view pipelines and validators which it couldn't conf
 
 Navigate to the file [here](https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_local_dump.js) in your browser and right click and "Save As..."
 
-Alternatively, Linux or MacOS users can run the following command:
+Alternatively, you can run the following command to download the file with `curl`:
 ```
-wget "https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_local_dump.js"
+curl -f -O "https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_local_dump.js"
 ```
 
 #### Running

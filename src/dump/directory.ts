@@ -20,7 +20,8 @@ export function parseDirectory(directory: string): any[] {
 
     const metadata = EJSON.parse(buffer.toString());
     return {
-      name: metadata.collectionName ?? path.basename(file, METADATA_FILE_SUFFIX),
+      name:
+        metadata.collectionName ?? path.basename(file, METADATA_FILE_SUFFIX),
       db: path.dirname(file),
       ...metadata,
     };

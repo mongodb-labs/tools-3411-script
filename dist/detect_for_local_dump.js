@@ -3792,39 +3792,48 @@ var TERMINATOR = 4294967295;
 var MAGIC_NUMBER = 1843566977;
 var pipelineAsync = promisify(pipeline);
 var ParseArchiveStream = class extends Transform {
+  source;
   buffer = Buffer.alloc(0);
   foundMagicNumber = false;
-  constructor() {
+  foundTerminator = false;
+  constructor(source) {
     super({ readableObjectMode: true });
+    this.source = source;
+  }
+  isDone() {
+    return this.foundTerminator;
   }
   _transform(chunk, _, callback) {
     try {
       this._doTransform(chunk, callback);
-    } catch (e) {
-      console.error("Chunk transformation failed: ", e);
+    } catch (error) {
+      console.error("Failed to parse archive file: ", error);
     }
   }
   _doTransform(chunk, callback) {
-    this.buffer = Buffer.concat([this.buffer, chunk]);
-    if (!this._tryFindMagicNumber()) {
+    if (this.foundTerminator) {
+      this.source.unpipe(this);
+      this.push(null);
       return callback();
     }
+    this.buffer = Buffer.concat([this.buffer, chunk]);
+    this._trySkipMagicNumber();
     while (this._tryPushNextDocument()) {
     }
     callback();
   }
-  _tryFindMagicNumber() {
+  _trySkipMagicNumber() {
     if (this.foundMagicNumber) {
-      return true;
+      return;
     }
     const magicNumberIndex = this.buffer.indexOf(int32ToBytes(MAGIC_NUMBER));
-    this.foundMagicNumber = magicNumberIndex !== -1;
-    if (this.foundMagicNumber) {
-      this.buffer = this.buffer.subarray(magicNumberIndex + BYTES_IN_INT32);
-    } else {
-      this.buffer = this.buffer.subarray(this.buffer.length - BYTES_IN_INT32);
+    if (magicNumberIndex !== 0) {
+      throw new Error(
+        "Invalid archive file. Are you sure this is a MongoDB archive dump?"
+      );
     }
-    return this.foundMagicNumber;
+    this.foundMagicNumber = true;
+    this.buffer = this.buffer.subarray(BYTES_IN_INT32);
   }
   _tryPushNextDocument() {
     const { documentLength, ok } = this._tryGetNextDocumentLength();
@@ -3842,6 +3851,7 @@ var ParseArchiveStream = class extends Transform {
     }
     const nextUint32 = this.buffer.readUInt32LE();
     if (nextUint32 === TERMINATOR) {
+      this.foundTerminator = true;
       return { ok: false };
     }
     const documentLength = nextUint32;
@@ -3852,14 +3862,22 @@ var ParseArchiveStream = class extends Transform {
   }
 };
 async function parseArchive(archiveFilepath) {
-  const parseArchiveStream = new ParseArchiveStream();
   const archiveStreams = createArchiveStreams(archiveFilepath);
+  const sourceStream = archiveStreams[archiveStreams.length - 1];
+  const parseArchiveStream = new ParseArchiveStream(sourceStream);
+  const objects = [];
   try {
-    const objects = collectStreamObjects(parseArchiveStream);
+    const collection = collectStreamObjects(objects, parseArchiveStream);
     await pipelineAsync([...archiveStreams, parseArchiveStream]);
-    return await objects;
-  } catch (e) {
-    console.error("Failed to parse archive: ", e);
+    await collection;
+    return objects;
+  } catch (error) {
+    if (parseArchiveStream.isDone()) {
+      return objects;
+    } else {
+      console.error("Failed to parse archive: ", error);
+      throw error;
+    }
   }
 }
 function createArchiveStreams(archiveFilepath) {
@@ -3867,12 +3885,10 @@ function createArchiveStreams(archiveFilepath) {
   const gunzipStream = createGunzip();
   return archiveFilepath.endsWith(ARCHIVE_SUFFIX_GZ) ? [readStream, gunzipStream] : [readStream];
 }
-async function collectStreamObjects(stream) {
-  const objects = [];
+async function collectStreamObjects(objects, stream) {
   for await (const obj of stream) {
     objects.push(obj);
   }
-  return objects;
 }
 function readDocumentMetadata(buffer2, documentLength) {
   const documentBytes = buffer2.subarray(0, documentLength);

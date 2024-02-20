@@ -6,7 +6,7 @@
   "scripts": {
     "test": "jest",
     "build-active-cluster": "esbuild src/cluster.ts --bundle --outfile=dist/detect_for_active_cluster.js --platform=node --target=es2022",
-    "build-local-dump": "esbuild src/dump/dump.ts --bundle --outfile=dist/detect_for_local_dump.js --platform=node --target=es2022 --format=esm",
+    "build-local-dump": "esbuild src/dump/dump.ts --bundle --outfile=dist/detect_for_local_dump.mjs --platform=node --target=es2022 --format=esm",
     "generate-notices": "./etc/generate-notices.pl > THIRD-PARTY-NOTICES"
   },
   "devDependencies": {

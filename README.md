@@ -51,11 +51,11 @@ The script will then output view pipelines and validators which it couldn't conf
 
 #### Download
 
-Navigate to the file [here](https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_local_dump.js) in your browser and right click and "Save As..."
+Navigate to the file [here](https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_local_dump.mjs) in your browser and right click and "Save As..."
 
 Alternatively, you can run the following command to download the file with `curl`:
 ```
-curl -f -O "https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_local_dump.js"
+curl -f -O "https://raw.githubusercontent.com/mongodb-labs/tools-3411-script/main/dist/detect_for_local_dump.mjs"
 ```
 
 #### Running
@@ -71,13 +71,13 @@ The script will read collection options from the dump provided. The script will 
 Running with a directory:
 
 ```
-DUMP_TYPE=directory DUMP_PATH=dump node detect_for_local_dump.js
+DUMP_TYPE=directory DUMP_PATH=dump node detect_for_local_dump.mjs
 ```
 
 Running with an archive created by `mongodump --archive`:
 
 ```
-DUMP_TYPE=archive DUMP_PATH=archive.out node detect_for_local_dump.js
+DUMP_TYPE=archive DUMP_PATH=archive.out node detect_for_local_dump.mjs
 ```
 
 #### Windows
@@ -85,13 +85,13 @@ DUMP_TYPE=archive DUMP_PATH=archive.out node detect_for_local_dump.js
 Running with a directory:
 
 ```
-set "DUMP_TYPE=directory" && set "DUMP_PATH=dump" && node detect_for_local_dump.js
+set "DUMP_TYPE=directory" && set "DUMP_PATH=dump" && node detect_for_local_dump.mjs
 ```
 
 Running with an archive created by `mongodump --archive`:
 
 ```
-set "DUMP_TYPE=archive" && set "DUMP_PATH=archive.out" && node detect_for_local_dump.js
+set "DUMP_TYPE=archive" && set "DUMP_PATH=archive.out" && node detect_for_local_dump.mjs
 ```
 
 ## Output
@@ -180,7 +180,7 @@ VAR1=foo VAR2=bar mongosh "mongodb://localhost:27017" -f detect_for_active_clust
 or
 
 ```
-VAR1=foo VAR2=bar node detect_for_local_dump.js
+VAR1=foo VAR2=bar node detect_for_local_dump.mjs
 ```
 
 #### Windows
@@ -192,7 +192,7 @@ set "VAR1=foo" && set "VAR2=bar" && mongosh "mongodb://localhost:27017" -f detec
 or
 
 ```
-set "VAR1=foo" && set "VAR2=bar" && node detect_for_local_dump.js
+set "VAR1=foo" && set "VAR2=bar" && node detect_for_local_dump.mjs
 ```
 
 The following list of options can be provided to both `mongosh` for active clusters and `node` for
@@ -235,7 +235,7 @@ To build the `detect_for_active_cluster.js` script that runs against **active Mo
 npm run build-active-cluster
 ```
 
-To build the `detect_for_local_dump.js` script that runs against **local dumps**, run:
+To build the `detect_for_local_dump.mjs` script that runs against **local dumps**, run:
 
 ```
 npm run build-local-dump
